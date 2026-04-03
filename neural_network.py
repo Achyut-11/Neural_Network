@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 
-
 beta1,beta2 = 0.9,0.99
 t =1
 e = 10e-8
