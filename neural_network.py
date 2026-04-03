@@ -1,28 +1,38 @@
 import pandas as pd
 import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.datasets import load_digits
 
+digits = load_digits()
 beta1,beta2 = 0.9,0.99
 t =1
 e = 10e-8
 lambda_ = 0.001
 
-#6stats,3neurons,8species
 
-df = pd.read_excel("pokemon_iv_dataset_1000.xlsx")
-x=df[["hp","attack","defense","sp_attack","sp_defense","speed"]].values
-a=df["species"].values
-y=np.eye(8)[a]
-w1 = np.random.randn(6,3)*0.01
-b1 = np.zeros((1,3))
+x=digits.data
 
-w2 = np.random.randn(3,8)*0.01
-b2 = np.zeros((1,8))  
+y_raw=digits.target
+w1 = np.random.randn(64,16)*0.01
+b1 = np.zeros((1,16))
+
+w2 = np.random.randn(16,10)*0.01
+b2 = np.zeros((1,10))  
 
 x=x/100
 
 learn=0.1
 
-m=len(a)
+x_train, x_test, y_train_raw, y_test_raw = train_test_split(
+    x, y_raw,
+    test_size=0.2,
+    random_state=38
+)
+
+y_train = np.eye(10)[y_train_raw]
+y_test = np.eye(10)[y_test_raw]
+
+m=len(x_train)
 mb1,vb1 = np.zeros_like(b1),np.zeros_like(b1)
 mb2,vb2 = np.zeros_like(b2),np.zeros_like(b2)
 mw1,vw1 = np.zeros_like(w1),np.zeros_like(w1)
@@ -39,24 +49,24 @@ def reluder(z):
     return(z>0).astype(float)
 
 
-for i in range(60000):
-    z1=x@w1+b1
+for i in range(10000):
+    z1=x_train@w1+b1
     h=relu(z1)
     z2 = h@ w2+b2
 
     exp_z2 = np.exp(z2)
     p = exp_z2/(np.sum(exp_z2,axis = 1,keepdims=True))
 
-    dz2 = p-y
+    dz2 = p-y_train
     gradw2 = (h.T@dz2)/m
     gradb2 = (np.sum(dz2,axis=0,keepdims=True))/m
 
     dh = dz2@w2.T
     dz1=dh*reluder(z1)
-    gradw1 = (x.T@dz1)/m
+    gradw1 = (x_train.T@dz1)/m
     gradb1 = (np.sum(dz1,axis=0,keepdims=True))/m
 
-    l2 = l2 = (lambda_/2)*(np.sum(w1**2)+np.sum(w2**2))
+    l2 = (lambda_/2)*(np.sum(w1**2)+np.sum(w2**2))
     gradw1 = gradw1+lambda_*w1
     gradw2 = gradw2+lambda_*w2
 
@@ -91,22 +101,30 @@ for i in range(60000):
     b2 = b2 - learn*fingradb2  
     w1 = w1 - learn*fingradw1
     b1 = b1 - learn*fingradb1
-    loss = -np.mean(np.sum(y * np.log(p + 1e-9), axis=1))+l2
+    loss = -np.mean(np.sum(y_train * np.log(p + 1e-9), axis=1))+l2
     if(i%1000==0):
         print("loss:",loss)
        
     
 
-print("the weights for neurons",w1)
+print("w1:",w1)
 
-print("the bias for neurons",b1)
-print("the weights for softmax",w2)
-print("the bias for neurons",b2)
+print("b1:",b1)
+print("w2:",w2)
+print("b2:",b2)
 
+z1 = x_test@w1+b1
+h = relu(z1)
+z2 = h@w2+b2
 
-np.savez("pokemonpredictneuralversion2",wneuron = w1,biasneuron = b1, wsoft = w2, bsoft = b2)
+expz2 = np.exp(z2)
+p_test = expz2/(np.sum((expz2),axis = 1,keepdims = True))
 
-
+pred_test = np.argmax(p_test,axis = 1)
+expect = np.argmax(y_test,axis = 1)
+  
+acc = np.mean(pred_test == expect)
+print("test acc:",acc)
 
 
 
